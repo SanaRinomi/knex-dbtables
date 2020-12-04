@@ -1,0 +1,25 @@
+{
+  "name": "knex-dbtables",
+  "version": "1.0.0",
+  "description": "Simple DB manager for Knex.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SanaRinomi/pg-dbtables.git"
+  },
+  "author": "Amelia Rose Aldridge",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SanaRinomi/pg-dbtables/issues"
+  },
+  "homepage": "https://github.com/SanaRinomi/pg-dbtables#readme",
+  "dependencies": {
+    "knex": "^0.21.12"
+  },
+  "optionalDependencies": {
+    "pg": "^8.5.1"
+  }
+}

@@ -1,2 +1,2 @@
-# pg-dbtables
-Simple classes for dealing with PG DB tables.
+# Knex DB Tables
+Simple DB manager for Knex.

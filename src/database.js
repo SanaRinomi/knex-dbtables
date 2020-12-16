@@ -17,9 +17,9 @@ class DataBase {
         this.tables = new Map();
         this.toCreate = [];
     }
-
+    
     /**
-     * Add and create the table
+     * Add the table and mark it for creation if needed.
     * @param {object} table - Options for the table.
      * @param {string} table.name - Name of the table.
      * @param {object} table.columns - JSON containing all the columns for the table.
@@ -32,6 +32,10 @@ class DataBase {
         return tableInst;
     }
 
+    /**
+     * Create all tables marked for creation.
+     * @param {boolean} checkExist - Check whether or not the tables exist.
+     */
     async create(checkExist = true) {
         for (let i = 0; i < this.toCreate.length; i++) {
             const table = this.toCreate[i];

@@ -1,4 +1,18 @@
 /**
+ * Results from a DB query.
+ * @param {*} data - An object or an array of objects.
+ */
+function dbResult(data) {
+    if(data) return {
+        success: true,
+        data
+    }
+    else return {
+        success: false
+    }
+};
+
+/**
  * Column functions that are independed from DB table creation.
  * @param {Table} table - Instance of Table class.
  * @param {string} type - Column type.
@@ -54,7 +68,7 @@ function dbIndependentColumnOpts(table, type, name, options) {
  */
 function tableColumnGen(table, colGen, type, name, options) {
     let res;
-    switch (type) { // TODO: Add decimals.
+    switch (type) {
         case "increment":
             res = colGen.increments(name);
             table.primary = {name, type, auto: true};
@@ -151,7 +165,6 @@ function tableColumnGen(table, colGen, type, name, options) {
     }
 }
 
-// TODO: Add functions to retrieve and set data.
 class Table {
     /**
      * Table instance for managing a DB.
@@ -215,6 +228,163 @@ class Table {
         });
 
         return;
+    }
+
+    async all (data) {
+        if(data) {
+            for (let i = 0; i < data.length; i++) {
+                let colRes = this.columns[data[i]];
+                if(!colRes)
+                    throw new Error(`Column ${data[i]} doesn't exist in this table.`);
+            }
+        }
+
+        let res = await this.db.from(this.name).select(data);
+
+        if(res.length && res[0])
+            return dbResult(res);
+        else return dbResult();
+    }
+
+    async get(options, data, arrRes = false) {
+        let opt;
+        if (typeof options === "object")
+            opt = options;
+        else if(options && this.primary)
+            opt[this.primary] = options;
+        else throw new Error(`Table "${this.name}" doesn't have a primary key set. Can't manage id with value "${id}"`);
+
+        if(data) {
+            for (let i = 0; i < data.length; i++) {
+                let colRes = this.columns[data[i]];
+                if(!colRes)
+                    throw new Error(`Column ${data[i]} doesn't exist in this table.`);
+            }
+        }
+
+        let res = await this.db.from(this.name).select(data).where(opt);
+
+        if(res.length && res[0])
+            return dbResult(arrRes ? res : res[0]);
+        else return dbResult();
+    }
+
+    async update(id, data) {
+        let where;
+        if(typeof id === "object") where = id;
+        else if(this.primary) {
+            where = {};
+            where[this.primary] = id;
+        } else throw new Error(`Table "${this.name}" doesn't have a primary key set. Can't manage id with value "${id}"`);
+
+        for (const key in data) {
+            if (data.hasOwnProperty(key)) {
+                const typeRes = Table.checkType(this, key, data[key]);
+
+                if(typeRes instanceof Error)
+                    throw typeRes;
+                else data[key] = typeRes;
+            }
+        }
+
+        let res = await this.db(this._name).where(where).update(data, typeof id === "object" ? Object.keys(id) : [this.primary]);
+        
+        if(Array.isArray(res) && res.length)
+            return dbResult(res);
+        else return dbResult();
+    }
+
+    async insert(data, options = {
+        upsert: true,
+        returning: "*"
+    }) {
+        options = {
+            upsert: true,
+            returning: "*",
+            onConflict: this.primary,
+            ...options
+        };
+
+        if(!returning && this.primary) returning = [this.primary];
+
+        for (const key in data) {
+            if (data.hasOwnProperty(key)) {
+                const typeRes = Table.checkType(this, key, data[key]);
+
+                if(typeRes instanceof Error)
+                    throw typeRes;
+                else data[key] = typeRes;
+            }
+        }
+
+        let res;
+        if(options.upsert) res = await this.db(this.name).insert(data).onConflict(options.onConflict).merge().returning(options.returning);
+        else res = await this.db(this.name).insert(data).returning(returning);
+        
+        if(Array.isArray(res) && res.length)
+            return dbResult(res);
+        else return dbResult();
+    }
+
+    async del(options) {
+        let opt;
+        if (typeof options === "object")
+            opt = options;
+        else if(options && this.primary)
+            opt[this.primary] = options;
+
+        let res = await this.db(this.name).where(options).del();
+        
+        if(res)
+            return true;
+        else return false;
+    }
+
+    static checkType(table, id, value) {
+        const col = table.columns[id];
+        const colType = col ? typeof col === "string" ? col : col.type : null;
+
+        if(!colType) return new Error(`Column "${id}" doesn't exist on table "${table.name}"`);
+
+        switch (typeof value) {
+            case "number":
+            case "bigint":
+                if(colType === "string" || colType === "integer")
+                    return value;
+                else if(colType === "boolean" && value == "1")
+                    return true;
+                else if(colType === "boolean" && value == "0")
+                    return false;
+                else return new Error(`Value "${value}" is not of type ${colType} for the column "${id}"`);
+        
+            case "string":
+                if(colType === "string" || colType === "json" || colType === "jsonb" || colType === "timestamp" || colType === "date" || colType === "uuid")
+                    return value;
+                else if(colType === "integer" && !isNaN(value))
+                    return Number(value);
+                else if(colType === "boolean" && (value == "true" || value == "yes" || value == "1"))
+                    return true;
+                else if(colType === "boolean" && (value == "false" || value == "no" || value == "0"))
+                    return false;
+                else return new Error(`Value "${value}" is not of type ${colType} for the column "${id}"`);
+
+            case "object": 
+                if(colType === "string" || colType === "json" || colType === "jsonb")
+                    return JSON.stringify(value);
+                else return new Error(`Value "${value}" is not of type ${colType} for the column "${id}"`);
+
+            case "boolean": 
+                if(colType === "boolean")
+                    return value;
+                else if(colType === "integer" && !isNaN(value))
+                    return value ? 1 : 0;
+                else if(colType === "string")
+                    return value ? "true" : "false";
+                else return new Error(`Value "${value}" is not of type ${colType} for the column "${id}"`);
+
+            default:
+                return new Error(`Value "${value}" is not of type ${colType} for the column "${id}"`);
+        }
     }
 }
 

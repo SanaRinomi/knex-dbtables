@@ -351,6 +351,8 @@ class Table {
             case "bigint":
                 if(colType === "string" || colType === "integer")
                     return value;
+                else if(colType === "increment")
+                    return value > 0 ? value : new Error(`Value "${value}" is not a positive number for the column "${id}"`);
                 else if(colType === "boolean" && value == "1")
                     return true;
                 else if(colType === "boolean" && value == "0")
@@ -360,6 +362,8 @@ class Table {
             case "string":
                 if(colType === "string" || colType === "json" || colType === "jsonb" || colType === "timestamp" || colType === "date" || colType === "uuid")
                     return value;
+                else if(colType === "increment" && !isNaN(value))
+                    return Number(value) > 0 ? Number(value) : new Error(`Value "${value}" is not a positive number for the column "${id}"`);
                 else if(colType === "integer" && !isNaN(value))
                     return Number(value);
                 else if(colType === "boolean" && (value == "true" || value == "yes" || value == "1"))

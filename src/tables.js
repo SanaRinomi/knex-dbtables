@@ -305,8 +305,6 @@ class Table {
             ...options
         };
 
-        if(!returning && this.primary) returning = [this.primary];
-
         for (const key in data) {
             if (data.hasOwnProperty(key)) {
                 const typeRes = Table.checkType(this, key, data[key]);

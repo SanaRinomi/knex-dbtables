@@ -1,6 +1,6 @@
 {
   "name": "knex-dbtables",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Simple DB manager for Knex.",
   "main": "src/index.js",
   "scripts": {

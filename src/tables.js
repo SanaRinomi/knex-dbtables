@@ -20,6 +20,9 @@ function dbResult(data) {
  * @param {object} options - Additional options available for a column.
  */
 function dbIndependentColumnOpts(table, type, name, options) {
+    if(type === "increment" || options.primary)
+        this.primary = {name, type, auto: type === "increment" ? true : false};
+
     if(options.references && typeof options.references === "string") {
         // Check the reference string.
         const refArr = options.references.split("."); // Split the string to separate table for column name.
@@ -71,7 +74,6 @@ function tableColumnGen(table, colGen, type, name, options) {
     switch (type) {
         case "increment":
             res = colGen.increments(name);
-            table.primary = {name, type, auto: true};
             break;
     
         case "string":
@@ -117,7 +119,6 @@ function tableColumnGen(table, colGen, type, name, options) {
     if(options) {
         if(options.primary) {
             res = res.primary();
-            table.primary = {name, type, auto: type === "increment" ? true : false};
         }
 
         if(options.unsigned) {
@@ -207,6 +208,8 @@ class Table {
                 const element = this.columns[name];
                 if(typeof element === "object")
                     dbIndependentColumnOpts(this, element.type, name, element);
+                else if(element === "increment")
+                    this.primary = {name, type: element, auto: true};
             }   
         }
     }
@@ -251,7 +254,7 @@ class Table {
         if (typeof options === "object")
             opt = options;
         else if(options && this.primary)
-            opt[this.primary] = options;
+            opt[this.primary.name] = options;
         else throw new Error(`Table "${this.name}" doesn't have a primary key set. Can't manage id with value "${id}"`);
 
         if(data) {
@@ -274,7 +277,7 @@ class Table {
         if(typeof id === "object") where = id;
         else if(this.primary) {
             where = {};
-            where[this.primary] = id;
+            where[this.primary.name] = id;
         } else throw new Error(`Table "${this.name}" doesn't have a primary key set. Can't manage id with value "${id}"`);
 
         for (const key in data) {
@@ -301,7 +304,7 @@ class Table {
         options = {
             upsert: true,
             returning: "*",
-            onConflict: this.primary,
+            onConflict: this.primary.name,
             ...options
         };
 
@@ -329,7 +332,7 @@ class Table {
         if (typeof options === "object")
             opt = options;
         else if(options && this.primary)
-            opt[this.primary] = options;
+            opt[this.primary.name] = options;
 
         let res = await this.db(this.name).where(options).del();
         
